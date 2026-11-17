@@ -77,35 +77,25 @@
 <label class="field"><span>Event / project type</span><select name="projectType"><option value="">Choose a category (optional)</option><option>Festival / outdoor event</option><option>Indoor event / arena</option><option>Artist / tour</option><option>Brand activation</option><option>Stage design partnership</option><option>Other</option></select></label>
 <label class="field"><span>Event date (optional)</span><input name="eventDate" type="date"></label>
 <label class="field"><span>Your idea / message *</span><textarea name="message" required maxlength="3000" placeholder="What are you imagining?"></textarea></label>
-<div id="captcha" aria-label="Spam verification"></div>
-<button class="btn btn-primary" type="submit" id="submit-button" disabled>SEND REQUEST ↗</button>
+<button class="btn btn-primary" type="submit" id="submit-button">OPEN EMAIL ↗</button>
 <div class="form-status" id="form-status" role="status" aria-live="polite"></div>
-<p class="fine">By submitting, you agree that we may contact you about your inquiry. We only use these details to respond to your request.</p>
+<p class="fine">This opens your email app with your inquiry filled in. Click Send there to email us.</p>
 </form></div>
 </div><div class="container footer"><span>///</span> FROM CONCEPT TO IMPACT. <span>///</span></div></section>
 <script>
-const form=document.getElementById('lead-form'),intent=document.getElementById('intent'),status=document.getElementById('form-status'),submit=document.getElementById('submit-button');
-let widgetId=null,token='';
-function showError(message){status.textContent=message+' You can also email humphrey@growthartistmgmt.com or call +31 85 060 3984.';}
-function captchaReady(){
-  fetch('/api/config').then(r=>{if(!r.ok)throw Error('Form not configured');return r.json()}).then(({siteKey})=>{
-    widgetId=turnstile.render('#captcha',{sitekey:siteKey,theme:'dark',callback:value=>{token=value;submit.disabled=false;},'expired-callback':()=>{token='';submit.disabled=true;},'error-callback':()=>{token='';submit.disabled=true;showError('Spam verification failed.')}});
-  }).catch(()=>showError('The form is temporarily unavailable.'));
-}
+const form=document.getElementById('lead-form'),intent=document.getElementById('intent'),status=document.getElementById('form-status');
 document.querySelectorAll('[data-intent]').forEach(a=>a.addEventListener('click',()=>{intent.value=a.dataset.intent}));
-form.addEventListener('submit',async(e)=>{
-  e.preventDefault();if(!form.reportValidity()||!token)return;
-  const data=Object.fromEntries(new FormData(form).entries());data.turnstileToken=token;
-  submit.disabled=true;submit.textContent='SENDING…';status.textContent='';
-  try{
-    const res=await fetch('/api/contact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-    const body=await res.json().catch(()=>({}));
-    if(!res.ok)throw Error(body.error||'Could not send request');
-    status.textContent='Thank you! Your request has been sent. We will be in touch.';
-    form.reset();
-  }catch(err){showError(err.message||'Could not send request.');}
-  finally{token='';submit.disabled=true;submit.textContent='SEND REQUEST ↗';if(widgetId!==null)turnstile.reset(widgetId);}
+form.addEventListener('submit',e=>{
+  e.preventDefault();
+  if(!form.reportValidity())return;
+  const data=Object.fromEntries(new FormData(form).entries());
+  if(data.website)return;
+  const body=[['Inquiry',data.intent],['Name',data.name],['Organization',data.organization||'-'],['Email',data.email],['Project type',data.projectType||'-'],['Event date',data.eventDate||'-'],['Message',data.message]].map(([label,value])=>label+': '+value).join('\r\n');
+  const url='mailto:humphrey@growthartistmgmt.com?subject='+encodeURIComponent('AERO — '+data.intent)+'&body='+encodeURIComponent(body);
+  const link=document.createElement('a');
+  link.href=url;link.textContent='Open your email app again';
+  status.replaceChildren(document.createTextNode('Finish by clicking Send in your email app. If it did not open, '),link,document.createTextNode(' or email humphrey@growthartistmgmt.com directly.'));
+  window.location.href=url;
 });
 </script>
-<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=captchaReady" async defer></script>
 </body></html>
